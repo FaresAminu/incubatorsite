@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم - Business Seed</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --primary: #1a5f2a; --secondary: #d4af37; --accent: #2d8a3e; --dark: #0d3320; --light: #f0f7f0; --white: #ffffff; --danger: #dc3545; --gray: #6c757d; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Tajawal', sans-serif; }
+        body { background: #f5f5f5; }
+        
+        .login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, var(--primary) 0%, var(--dark) 100%); display: flex; align-items: center; justify-content: center; z-index: 9999; transition: opacity 0.5s; }
+        .login-box { background: white; padding: 40px; border-radius: 20px; width: 90%; max-width: 450px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center; }
+        .login-box img { height: 100px; margin-bottom: 20px; }
+        .login-box h2 { color: var(--primary); margin-bottom: 30px; font-size: 28px; }
+        
+        .form-group { margin-bottom: 20px; text-align: right; }
+        .form-group label { display: block; margin-bottom: 8px; color: #555; font-weight: 600; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; transition: all 0.3s; }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--primary); outline: none; }
+        
+        .btn { padding: 12px 30px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 700; transition: all 0.3s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--dark); transform: translateY(-2px); box-shadow: 0 5px 15px rgba(26,95,42,0.3); }
+        .btn-secondary { background: var(--secondary); color: var(--dark); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-success { background: #28a745; color: white; }
+        
+        .hidden { display: none !important; }
+        
+        .admin-container { display: none; min-height: 100vh; }
+        
+        .sidebar { position: fixed; right: 0; top: 0; width: 280px; height: 100vh; background: var(--dark); color: white; overflow-y: auto; z-index: 1000; padding: 20px 0; }
+        .sidebar-header { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: center; }
+        .sidebar-header img { height: 80px; margin-bottom: 10px; background: white; padding: 10px; border-radius: 10px; }
+        .sidebar-header h3 { font-size: 18px; margin-bottom: 5px; }
+        .sidebar-header p { font-size: 12px; opacity: 0.7; }
+        
+        .nav-menu { list-style: none; padding: 20px 0; }
+        .nav-item { padding: 12px 25px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 12px; border-right: 4px solid transparent; }
+        .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); border-right-color: var(--secondary); }
+        .nav-item i { width: 24px; text-align: center; }
+        
+        .main-content { margin-right: 280px; padding: 30px; min-height: 100vh; }
+        
+        .top-bar { background: white; padding: 20px 30px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .page-title h1 { color: var(--primary); font-size: 28px; }
+        .page-title p { color: var(--gray); font-size: 14px; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 20px; transition: transform 0.3s; }
+        .stat-card:hover { transform: translateY(-5px); }
+        .stat-icon { width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+        .stat-icon.blue { background: #e3f2fd; color: #1976d2; }
+        .stat-icon.green { background: #e8f5e9; color: #388e3c; }
+        .stat-icon.orange { background: #fff3e0; color: #f57c00; }
+        .stat-icon.red { background: #ffebee; color: #d32f2f; }
+        .stat-info h3 { font-size: 32px; color: var(--dark); margin-bottom: 5px; }
+        .stat-info p { color: var(--gray); font-size: 14px; }
+        
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .section-header h2 { color: var(--primary); font-size: 24px; }
+        
+        .card { background: white; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); overflow: hidden; margin-bottom: 20px; }
+        .card-header { padding: 20px 25px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .card-body { padding: 25px; }
+        
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th, .data-table td { padding: 15px; text-align: right; border-bottom: 1px solid #eee; }
+        .data-table th { background: #f8f9fa; font-weight: 700; color: var(--primary); }
+        .data-table tr:hover { background: #f8f9fa; }
+        
+        .action-btns { display: flex; gap: 8px; }
+        .btn-small { padding: 6px 12px; font-size: 13px; border: none; border-radius: 6px; cursor: pointer; transition: all 0.3s; }
+        .btn-edit { background: #e3f2fd; color: #1976d2; }
+        .btn-delete { background: #ffebee; color: #d32f2f; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; border-radius: 20px; padding: 30px; position: relative; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 2px solid #eee; }
+        .modal-header h3 { color: var(--primary); font-size: 24px; }
+        .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--gray); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.3s; }
+        .close-btn:hover { background: #f0f0f0; color: var(--danger); }
+        
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .file-upload { border: 2px dashed #ccc; padding: 30px; text-align: center; border-radius: 10px; cursor: pointer; transition: all 0.3s; }
+        .file-upload:hover { border-color: var(--primary); background: #f0f7f0; }
+        .file-upload i { font-size: 40px; color: var(--primary); margin-bottom: 10px; }
+        
+        .message-item { background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 15px; border-right: 4px solid var(--primary); }
+        .message-item.unread { background: #e3f2fd; border-right-color: #1976d2; }
+        .message-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .message-sender { font-weight: 700; color: var(--primary); }
+        .message-date { color: var(--gray); font-size: 13px; }
+        .message-subject { font-weight: 600; margin-bottom: 8px; }
+        .message-content { color: #555; line-height: 1.6; }
+        
+        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+        .gallery-item { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; cursor: pointer; }
+        .gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
+        .gallery-item:hover img { transform: scale(1.1); }
+        .gallery-overlay { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.7)); color: white; padding: 20px 10px 10px; font-size: 14px; }
+        
+        .toast { position: fixed; bottom: 30px; left: 30px; background: var(--dark); color: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); display: none; align-items: center; gap: 10px; z-index: 3000; animation: slideIn 0.3s; }
+        @keyframes slideIn { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(100%); transition: transform 0.3s; }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-right: 0; }
+            .form-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-overlay" id="loginScreen">
+        <div class="login-box">
+            <img src="https://i.ibb.co/chM4p5LP/logo.png" alt="Business Seed Logo" onerror="this.src='https://via.placeholder.com/100x100/1a5f2a/ffffff?text=Business+Seed'">
+            <h2>نظام إدارة المحتوى - حاضنة الأعمال</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>اسم المستخدم</label>
+                    <input type="text" id="username" required placeholder="أدخل اسم المستخدم">
+                </div>
+                <div class="form-group">
+                    <label>كلمة المرور</label>
+                    <input type="password" id="password" required placeholder="أدخل كلمة المرور">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+                    <i class="fas fa-sign-in-alt"></i> دخول
+                </button>
+            </form>
+            <p style="margin-top: 20px; color: #999; font-size: 12px;">
+                Business Seed Incubator - HSSAE
+            </p>
+        </div>
+    </div>
+
+    <div class="admin-container" id="adminPanel">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <img src="https://i.ibb.co/chM4p5LP/logo.png" alt="Logo" onerror="this.src='https://via.placeholder.com/80x80/ffffff/1a5f2a?text=BS'">
+                <h3>Business Seed</h3>
+                <p>لوحة التحكم</p>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item active" onclick="showSection('dashboard')"><i class="fas fa-home"></i><span>الرئيسية</span></li>
+                <li class="nav-item" onclick="showSection('publications')"><i class="fas fa-book"></i><span>المنشورات</span></li>
+                <li class="nav-item" onclick="showSection('posts')"><i class="fas fa-newspaper"></i><span>الأخبار والمقالات</span></li>
+                <li class="nav-item" onclick="showSection('files')"><i class="fas fa-file-pdf"></i><span>الملفات والوثائق</span></li>
+                <li class="nav-item" onclick="showSection('gallery')"><i class="fas fa-images"></i><span>معرض الصور</span></li>
+                <li class="nav-item" onclick="showSection('messages')"><i class="fas fa-envelope"></i><span>الرسائل</span><span class="badge" id="msgCount" style="margin-right: auto; background: var(--danger); color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px;">0</span></li>
+                <li class="nav-item" onclick="logout()" style="margin-top: 50px; color: #ff6b6b;"><i class="fas fa-sign-out-alt"></i><span>تسجيل الخروج</span></li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            <div class="top-bar">
+                <div class="page-title">
+                    <h1 id="pageTitle">لوحة التحكم</h1>
+                    <p id="pageDesc">نظرة عامة على أداء الموقع</p>
+                </div>
+                <div style="display: flex; gap: 15px;">
+                    <a href="index.html" target="_blank" class="btn btn-primary"><i class="fas fa-eye"></i> معاينة الموقع</a>
+                </div>
+            </div>
+
+            <div class="content-section active" id="dashboard">
+                <div class="stats-grid">
+                    <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-book"></i></div><div class="stat-info"><h3 id="pubCount">0</h3><p>منشور علمي</p></div></div>
+                    <div class="stat-card"><div class="stat-icon green"><i class="fas fa-newspaper"></i></div><div class="stat-info"><h3 id="postCount">0</h3><p>خبر/مقال</p></div></div>
+                    <div class="stat-card"><div class="stat-icon orange"><i class="fas fa-file"></i></div><div class="stat-info"><h3 id="fileCount">0</h3><p>ملف محمل</p></div></div>
+                    <div class="stat-card"><div class="stat-icon red"><i class="fas fa-envelope"></i></div><div class="stat-info"><h3 id="messageCount">0</h3><p>رسالة جديدة</p></div></div>
+                </div>
+                <div class="card"><div class="card-header"><h3>آخر النشاطات</h3></div><div class="card-body" id="recentActivity"><p style="text-align: center; color: #999; padding: 40px;">لا توجد نشاطات حديثة</p></div></div>
+            </div>
+
+            <div class="content-section" id="publications">
+                <div class="section-header"><div><h2>المنشورات العلمية</h2><p style="color: #666; margin-top: 5px;">إدارة الأبحاث والمنشورات العلمية</p></div><button class="btn btn-primary" onclick="openModal('publicationModal')"><i class="fas fa-plus"></i> إضافة منشور جديد</button></div>
+                <div class="card"><div class="card-body"><table class="data-table"><thead><tr><th>العنوان</th><th>المؤلفون</th><th>التاريخ</th><th>الملف</th><th>الإجراءات</th></tr></thead><tbody id="publicationsTable"></tbody></table></div></div>
+            </div>
+
+            <div class="content-section" id="posts">
+                <div class="section-header"><div><h2>الأخبار والمقالات</h2><p style="color: #666; margin-top: 5px;">إدارة محتوى الأخبار والفعاليات</p></div><button class="btn btn-primary" onclick="openModal('postModal')"><i class="fas fa-plus"></i> إضافة خبر جديد</button></div>
+                <div id="postsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;"></div>
+            </div>
+
+            <div class="content-section" id="files">
+                <div class="section-header"><div><h2>الملفات والوثائق</h2><p style="color: #666; margin-top: 5px;">إدارة الملفات القابلة للتحميل</p></div><button class="btn btn-primary" onclick="openModal('fileModal')"><i class="fas fa-upload"></i> رفع ملف جديد</button></div>
+                <div class="card"><div class="card-body"><table class="data-table"><thead><tr><th>اسم الملف</th><th>النوع</th><th>الحجم</th><th>تاريخ الرفع</th><th>الإجراءات</th></tr></thead><tbody id="filesTable"></tbody></table></div></div>
+            </div>
+
+            <div class="content-section" id="gallery">
+                <div class="section-header"><div><h2>معرض الصور</h2><p style="color: #666; margin-top: 5px;">إدارة صور الأنشطة والفعاليات</p></div><button class="btn btn-primary" onclick="openModal('imageModal')"><i class="fas fa-image"></i> إضافة صور</button></div>
+                <div class="gallery-grid" id="galleryGrid"></div>
+            </div>
+
+            <div class="content-section" id="messages">
+                <div class="section-header"><h2>رسائل الزوار</h2><button class="btn btn-secondary" onclick="markAllRead()"><i class="fas fa-check-double"></i> تحديد الكل كمقروء</button></div>
+                <div id="messagesList"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="publicationModal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>إضافة منشور علمي جديد</h3><button class="close-btn" onclick="closeModal('publicationModal')">&times;</button></div>
+            <form id="publicationForm">
+                <div class="form-group"><label>عنوان المنشور</label><input type="text" name="title" required placeholder="أدخل عنوان البحث"></div>
+                <div class="form-group"><label>المؤلفون</label><input type="text" name="authors" required placeholder="مثال: د. أحمد محمد، د. فاطمة علي"></div>
+                <div class="form-row">
+                    <div class="form-group"><label>تاريخ النشر</label><input type="date" name="date" required></div>
+                    <div class="form-group"><label>المجلة/المؤتمر</label><input type="text" name="journal" placeholder="اسم المجلة أو المؤتمر"></div>
+                </div>
+                <div class="form-group"><label>الوصف/الملخص</label><textarea name="abstract" rows="4" placeholder="ملخص البحث..."></textarea></div>
+                <div class="form-group">
+                    <label>الملف (PDF)</label>
+                    <div class="file-upload" onclick="document.getElementById('pubFile').click()">
+                        <i class="fas fa-cloud-upload-alt"></i><p>اضغط هنا لرفع الملف</p>
+                        <input type="file" id="pubFile" accept=".pdf" style="display: none;" onchange="handleFileSelect(this, 'pubFileName')">
+                        <p id="pubFileName" style="color: var(--primary); margin-top: 10px;"></p>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> نشر المنشور</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="postModal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>إضافة خبر جديد</h3><button class="close-btn" onclick="closeModal('postModal')">&times;</button></div>
+            <form id="postForm">
+                <div class="form-group"><label>عنوان الخبر</label><input type="text" name="title" required placeholder="عنوان الخبر"></div>
+                <div class="form-group"><label>الفئة</label><select name="category" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #e0e0e0;"><option value="news">أخبار</option><option value="event">فعاليات</option><option value="announcement">إعلانات</option><option value="workshop">ورشات</option></select></div>
+                <div class="form-group"><label>صورة الخبر</label><input type="file" id="postImage" accept="image/*" onchange="previewImage(this, 'postImgPreview')"><img id="postImgPreview" style="max-width: 200px; margin-top: 10px; border-radius: 8px; display: none;"></div>
+                <div class="form-group"><label>محتوى الخبر الكامل</label><textarea name="content" rows="10" required placeholder="اكتب محتوى الخبر الكامل هنا... يمكنك كتابة نص طويل وسيظهر كاملاً عند الضغط على قراءة المزيد"></textarea></div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> نشر الخبر</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="fileModal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>رفع ملف جديد</h3><button class="close-btn" onclick="closeModal('fileModal')">&times;</button></div>
+            <form id="fileForm">
+                <div class="form-group"><label>اسم الملف</label><input type="text" name="filename" required placeholder="اسم الملف"></div>
+                <div class="form-group"><label>الوصف</label><textarea name="description" rows="3" placeholder="وصف الملف..."></textarea></div>
+                <div class="form-group"><label>الملف</label><input type="file" id="uploadFile" required onchange="updateFileInfo(this)"><p id="fileInfo" style="margin-top: 10px; color: #666;"></p></div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i> رفع الملف</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="imageModal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>إضافة صور للمعرض</h3><button class="close-btn" onclick="closeModal('imageModal')">&times;</button></div>
+            <form id="imageForm">
+                <div class="form-group"><label>اختيار الصور</label><input type="file" id="galleryImages" multiple accept="image/*" onchange="previewMultipleImages(this)"></div>
+                <div id="imagePreviewContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin: 20px 0;"></div>
+                <div class="form-group"><label>وصف/عنوان الصور</label><input type="text" name="caption" placeholder="وصف عام للصور"></div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-images"></i> إضافة للمعرض</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"><i class="fas fa-check-circle"></i><span id="toastMessage">تمت العملية بنجاح!</span></div>
+
+    <script>
+        let data = {
+            publications: JSON.parse(localStorage.getItem('pubs')) || [],
+            posts: JSON.parse(localStorage.getItem('posts')) || [],
+            files: JSON.parse(localStorage.getItem('files')) || [],
+            images: JSON.parse(localStorage.getItem('images')) || [],
+            messages: JSON.parse(localStorage.getItem('msgs')) || [{
+                id: 1, name: "أحمد محمد", email: "ahmed@example.com",
+                subject: "استفسار حول التسجيل",
+                content: "أرغب في التسجيل في الحاضنة و لدي بعض الأسئلة حول الشروط المطلوبة...",
+                date: new Date().toISOString(), read: false
+            }]
+        };
+
+        // UPDATED LOGIN CREDENTIALS
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            
+            // NEW PASSWORD: adminIncHSSAE2026
+            if(user === 'admin' && pass === 'adminIncHSSAE2026') {
+                document.getElementById('loginScreen').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('loginScreen').classList.add('hidden');
+                    document.getElementById('adminPanel').style.display = 'block';
+                    initDashboard();
+                }, 500);
+            } else {
+                alert('اسم المستخدم أو كلمة المرور غير صحيحة!');
+            }
+        });
+
+        function logout() { location.reload(); }
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            event.target.closest('.nav-item').classList.add('active');
+            document.querySelectorAll('.content-section').forEach(section => section.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+            
+            const titles = {
+                'dashboard': ['لوحة التحكم', 'نظرة عامة على أداء الموقع'],
+                'publications': ['المنشورات العلمية', 'إدارة الأبحاث والمنشورات'],
+                'posts': ['الأخبار والمقالات', 'إدارة محتوى الأخبار والفعاليات'],
+                'files': ['الملفات والوثائق', 'إدارة الملفات القابلة للتحميل'],
+                'gallery': ['معرض الصور', 'إدارة صور الأنشطة والفعاليات'],
+                'messages': ['الرسائل', 'رسائل الزوار والمستفيدين']
+            };
+            document.getElementById('pageTitle').textContent = titles[sectionId][0];
+            document.getElementById('pageDesc').textContent = titles[sectionId][1];
+            
+            if(sectionId === 'publications') loadPublications();
+            if(sectionId === 'posts') loadPosts();
+            if(sectionId === 'files') loadFiles();
+            if(sectionId === 'gallery') loadGallery();
+            if(sectionId === 'messages') loadMessages();
+        }
+
+        function initDashboard() {
+            updateStats();
+            loadRecentActivity();
+            updateMessageCount();
+        }
+
+        function updateStats() {
+            document.getElementById('pubCount').textContent = data.publications.length;
+            document.getElementById('postCount').textContent = data.posts.length;
+            document.getElementById('fileCount').textContent = data.files.length;
+            const unread = data.messages.filter(m => !m.read).length;
+            document.getElementById('messageCount').textContent = unread;
+            document.getElementById('msgCount').textContent = unread;
+        }
+
+        function loadRecentActivity() {
+            const allItems = [
+                ...data.publications.map(p => ({...p, type: 'publication', icon: 'fa-book'})),
+                ...data.posts.map(p => ({...p, type: 'post', icon: 'fa-newspaper'})),
+                ...data.files.map(f => ({...f, type: 'file', icon: 'fa-file'}))
+            ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+            
+            const container = document.getElementById('recentActivity');
+            if(allItems.length === 0) return;
+            container.innerHTML = allItems.map(item => `
+                <div style="display: flex; align-items: center; gap: 15px; padding: 15px; border-bottom: 1px solid #eee;">
+                    <div style="width: 40px; height: 40px; background: #e3f2fd; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #1976d2;"><i class="fas ${item.icon}"></i></div>
+                    <div style="flex: 1;"><h4 style="color: var(--primary); margin-bottom: 3px;">${item.title || item.filename}</h4><p style="color: #999; font-size: 13px;">${new Date(item.date).toLocaleDateString('ar-DZ')}</p></div>
+                </div>
+            `).join('');
+        }
+
+        function loadPublications() {
+            const tbody = document.getElementById('publicationsTable');
+            if(data.publications.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: #999;">لا توجد منشورات بعد</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.publications.map((pub, index) => `
+                <tr>
+                    <td><strong>${pub.title}</strong></td>
+                    <td>${pub.authors}</td>
+                    <td>${new Date(pub.date).toLocaleDateString('ar-DZ')}</td>
+                    <td><a href="${pub.file}" target="_blank" class="btn-small btn-edit"><i class="fas fa-download"></i></a></td>
+                    <td class="action-btns"><button class="btn-small btn-delete" onclick="deletePublication(${index})"><i class="fas fa-trash"></i></button></td>
+                </tr>
+            `).join('');
+        }
+
+        document.getElementById('publicationForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const fileInput = document.getElementById('pubFile');
+            const pub = {
+                id: Date.now(),
+                title: formData.get('title'),
+                authors: formData.get('authors'),
+                date: formData.get('date'),
+                journal: formData.get('journal'),
+                abstract: formData.get('abstract'),
+                file: fileInput.files.length > 0 ? URL.createObjectURL(fileInput.files[0]) : '#'
+            };
+            data.publications.push(pub);
+            localStorage.setItem('pubs', JSON.stringify(data.publications));
+            closeModal('publicationModal');
+            e.target.reset();
+            showToast('تم إضافة المنشور بنجاح!');
+            loadPublications();
+            updateStats();
+        });
+
+        function deletePublication(index) {
+            if(confirm('هل أنت متأكد من حذف هذا المنشور؟')) {
+                data.publications.splice(index, 1);
+                localStorage.setItem('pubs', JSON.stringify(data.publications));
+                loadPublications();
+                updateStats();
+                showToast('تم الحذف بنجاح');
+            }
+        }
+
+        function loadPosts() {
+            const container = document.getElementById('postsGrid');
+            if(data.posts.length === 0) {
+                container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">لا توجد أخبار بعد</div>';
+                return;
+            }
+            container.innerHTML = data.posts.map((post, index) => `
+                <div class="card" style="overflow: hidden;">
+                    ${post.image ? `<img src="${post.image}" style="width: 100%; height: 200px; object-fit: cover;">` : '<div style="height: 200px; background: linear-gradient(135deg, var(--primary), var(--dark)); display: flex; align-items: center; justify-content: center; color: white; font-size: 48px;"><i class="fas fa-newspaper"></i></div>'}
+                    <div style="padding: 20px;">
+                        <span style="color: var(--secondary); font-size: 12px; font-weight: 700;">${getCategoryName(post.category)}</span>
+                        <h3 style="color: var(--primary); margin: 10px 0;">${post.title}</h3>
+                        <p style="color: #666; line-height: 1.6; margin-bottom: 15px;">${post.content.substring(0, 100)}...</p>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: #999; font-size: 13px;">${new Date(post.date).toLocaleDateString('ar-DZ')}</span>
+                            <button class="btn-small btn-delete" onclick="deletePost(${index})"><i class="fas fa-trash"></i> حذف</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('postForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const imageInput = document.getElementById('postImage');
+            const post = {
+                id: Date.now(),
+                title: formData.get('title'),
+                category: formData.get('category'),
+                content: formData.get('content'),
+                date: new Date().toISOString(),
+                image: imageInput.files.length > 0 ? URL.createObjectURL(imageInput.files[0]) : null
+            };
+            data.posts.unshift(post);
+            localStorage.setItem('posts', JSON.stringify(data.posts));
+            closeModal('postModal');
+            e.target.reset();
+            document.getElementById('postImgPreview').style.display = 'none';
+            showToast('تم نشر الخبر بنجاح!');
+            loadPosts();
+            updateStats();
+        });
+
+        function deletePost(index) {
+            if(confirm('هل أنت متأكد من حذف هذا الخبر؟')) {
+                data.posts.splice(index, 1);
+                localStorage.setItem('posts', JSON.stringify(data.posts));
+                loadPosts();
+                updateStats();
+                showToast('تم الحذف بنجاح');
+            }
+        }
+
+        function loadFiles() {
+            const tbody = document.getElementById('filesTable');
+            if(data.files.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: #999;">لا توجد ملفات بعد</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.files.map((file, index) => `
+                <tr>
+                    <td><i class="fas fa-file" style="color: var(--primary); margin-left: 8px;"></i> ${file.name}</td>
+                    <td>${file.type || 'PDF'}</td>
+                    <td>${file.size || '2.5 MB'}</td>
+                    <td>${new Date(file.date).toLocaleDateString('ar-DZ')}</td>
+                    <td class="action-btns">
+                        <a href="${file.url}" download class="btn-small btn-edit"><i class="fas fa-download"></i></a>
+                        <button class="btn-small btn-delete" onclick="deleteFile(${index})"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        document.getElementById('fileForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const fileInput = document.getElementById('uploadFile');
+            const file = fileInput.files[0];
+            const fileData = {
+                id: Date.now(),
+                name: formData.get('filename'),
+                description: formData.get('description'),
+                url: URL.createObjectURL(file),
+                type: file.name.split('.').pop().toUpperCase(),
+                size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
+                date: new Date().toISOString()
+            };
+            data.files.push(fileData);
+            localStorage.setItem('files', JSON.stringify(data.files));
+            closeModal('fileModal');
+            e.target.reset();
+            document.getElementById('fileInfo').textContent = '';
+            showToast('تم رفع الملف بنجاح!');
+            loadFiles();
+            updateStats();
+        });
+
+        function deleteFile(index) {
+            if(confirm('هل أنت متأكد من حذف هذا الملف؟')) {
+                data.files.splice(index, 1);
+                localStorage.setItem('files', JSON.stringify(data.files));
+                loadFiles();
+                updateStats();
+                showToast('تم الحذف بنجاح');
+            }
+        }
+
+        function loadGallery() {
+            const container = document.getElementById('galleryGrid');
+            if(data.images.length === 0) {
+                container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">لا توجد صور بعد</div>';
+                return;
+            }
+            container.innerHTML = data.images.map((img, index) => `
+                <div class="gallery-item">
+                    <img src="${img.url}" alt="${img.caption}">
+                    <div class="gallery-overlay">
+                        <p>${img.caption || 'صورة من الأرشيف'}</p>
+                        <button onclick="deleteImage(${index})" style="background: var(--danger); color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-top: 5px;"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('imageForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const files = document.getElementById('galleryImages').files;
+            const caption = formData.get('caption');
+            for(let file of files) {
+                data.images.push({
+                    id: Date.now() + Math.random(),
+                    url: URL.createObjectURL(file),
+                    caption: caption || file.name,
+                    date: new Date().toISOString()
+                });
+            }
+            localStorage.setItem('images', JSON.stringify(data.images));
+            closeModal('imageModal');
+            e.target.reset();
+            document.getElementById('imagePreviewContainer').innerHTML = '';
+            showToast(`تم إضافة ${files.length} صورة بنجاح!`);
+            loadGallery();
+        });
+
+        function deleteImage(index) {
+            if(confirm('هل أنت متأكد من حذف هذه الصورة؟')) {
+                data.images.splice(index, 1);
+                localStorage.setItem('images', JSON.stringify(data.images));
+                loadGallery();
+                showToast('تم الحذف بنجاح');
+            }
+        }
+
+        function loadMessages() {
+            const container = document.getElementById('messagesList');
+            if(data.messages.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">لا توجد رسائل</div>';
+                return;
+            }
+            container.innerHTML = data.messages.map((msg, index) => `
+                <div class="message-item ${msg.read ? '' : 'unread'}" onclick="markAsRead(${index})">
+                    <div class="message-header">
+                        <div><span class="message-sender">${msg.name}</span><span style="color: #666; margin-right: 10px; font-size: 14px;">&lt;${msg.email}&gt;</span></div>
+                        <span class="message-date">${new Date(msg.date).toLocaleString('ar-DZ')}</span>
+                    </div>
+                    <div class="message-subject">${msg.subject}</div>
+                    <div class="message-content">${msg.content}</div>
+                    <button onclick="event.stopPropagation(); deleteMessage(${index})" style="margin-top: 10px; background: none; border: none; color: var(--danger); cursor: pointer;"><i class="fas fa-trash"></i> حذف</button>
+                </div>
+            `).join('');
+        }
+
+        function markAsRead(index) {
+            data.messages[index].read = true;
+            localStorage.setItem('msgs', JSON.stringify(data.messages));
+            loadMessages();
+            updateMessageCount();
+        }
+
+        function markAllRead() {
+            data.messages.forEach(m => m.read = true);
+            localStorage.setItem('msgs', JSON.stringify(data.messages));
+            loadMessages();
+            updateMessageCount();
+            showToast('تم تحديد جميع الرسائل كمقروءة');
+        }
+
+        function deleteMessage(index) {
+            if(confirm('هل أنت متأكد من حذف هذه الرسالة؟')) {
+                data.messages.splice(index, 1);
+                localStorage.setItem('msgs', JSON.stringify(data.messages));
+                loadMessages();
+                updateStats();
+                showToast('تم الحذف بنجاح');
+            }
+        }
+
+        function updateMessageCount() {
+            const unread = data.messages.filter(m => !m.read).length;
+            document.getElementById('msgCount').textContent = unread;
+        }
+
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+        
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = message;
+            toast.style.display = 'flex';
+            setTimeout(() => toast.style.display = 'none', 3000);
+        }
+
+        function handleFileSelect(input, displayId) {
+            if(input.files.length > 0) document.getElementById(displayId).textContent = 'الملف المختار: ' + input.files[0].name;
+        }
+
+        function previewImage(input, previewId) {
+            if(input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.getElementById(previewId);
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function previewMultipleImages(input) {
+            const container = document.getElementById('imagePreviewContainer');
+            container.innerHTML = '';
+            if(input.files) {
+                Array.from(input.files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        container.innerHTML += `<img src="${e.target.result}" style="width: 100%; height: 100px; object-fit: cover; border-radius: 5px;">`;
+                    }
+                    reader.readAsDataURL(file);
+                });
+            }
+        }
+
+        function updateFileInfo(input) {
+            if(input.files.length > 0) {
+                const file = input.files[0];
+                document.getElementById('fileInfo').textContent = `الملف: ${file.name} (${(file.size/1024/1024).toFixed(2)} MB)`;
+            }
+        }
+
+        function getCategoryName(cat) {
+            const cats = { 'news': 'أخبار', 'event': 'فعاليات', 'announcement': 'إعلانات', 'workshop': 'ورشات' };
+            return cats[cat] || 'خبر';
+        }
+
+        window.onclick = function(event) { if(event.target.classList.contains('modal')) event.target.classList.remove('active'); }
+    </script>
+</body>
+</html>
