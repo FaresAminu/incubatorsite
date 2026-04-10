@@ -79,19 +79,25 @@
         .btn-small { padding: 6px 12px; font-size: 13px; border: none; border-radius: 6px; cursor: pointer; transition: all 0.3s; }
         .btn-edit { background: #e3f2fd; color: #1976d2; }
         .btn-delete { background: #ffebee; color: #d32f2f; }
+        .btn-view { background: #e8f5e9; color: #2e7d32; }
         
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
         .modal.active { display: flex; }
-        .modal-content { background: white; width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; border-radius: 20px; padding: 30px; position: relative; }
+        .modal-content { background: white; width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto; border-radius: 20px; padding: 30px; position: relative; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 2px solid #eee; }
         .modal-header h3 { color: var(--primary); font-size: 24px; }
         .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--gray); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.3s; }
         .close-btn:hover { background: #f0f0f0; color: var(--danger); }
         
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .file-upload { border: 2px dashed #ccc; padding: 30px; text-align: center; border-radius: 10px; cursor: pointer; transition: all 0.3s; }
+        .file-upload { border: 2px dashed #ccc; padding: 30px; text-align: center; border-radius: 10px; cursor: pointer; transition: all 0.3s; background: #fafafa; }
         .file-upload:hover { border-color: var(--primary); background: #f0f7f0; }
         .file-upload i { font-size: 40px; color: var(--primary); margin-bottom: 10px; }
+        
+        .image-preview-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 15px; }
+        .preview-item { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; border: 2px solid #e0e0e0; }
+        .preview-item img { width: 100%; height: 100%; object-fit: cover; }
+        .remove-img { position: absolute; top: 5px; right: 5px; background: var(--danger); color: white; border: none; width: 25px; height: 25px; border-radius: 50%; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; }
         
         .message-item { background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 15px; border-right: 4px solid var(--primary); }
         .message-item.unread { background: #e3f2fd; border-right-color: #1976d2; }
@@ -106,6 +112,9 @@
         .gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
         .gallery-item:hover img { transform: scale(1.1); }
         .gallery-overlay { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.7)); color: white; padding: 20px 10px 10px; font-size: 14px; }
+        
+        .post-images-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 5px; margin-top: 10px; }
+        .post-images-grid img { width: 100%; height: 50px; object-fit: cover; border-radius: 5px; }
         
         .toast { position: fixed; bottom: 30px; left: 30px; background: var(--dark); color: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); display: none; align-items: center; gap: 10px; z-index: 3000; animation: slideIn 0.3s; }
         @keyframes slideIn { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
@@ -189,7 +198,7 @@
 
             <div class="content-section" id="posts">
                 <div class="section-header"><div><h2>الأخبار والمقالات</h2><p style="color: #666; margin-top: 5px;">إدارة محتوى الأخبار والفعاليات</p></div><button class="btn btn-primary" onclick="openModal('postModal')"><i class="fas fa-plus"></i> إضافة خبر جديد</button></div>
-                <div id="postsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;"></div>
+                <div id="postsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px;"></div>
             </div>
 
             <div class="content-section" id="files">
@@ -239,7 +248,18 @@
             <form id="postForm">
                 <div class="form-group"><label>عنوان الخبر</label><input type="text" name="title" required placeholder="عنوان الخبر"></div>
                 <div class="form-group"><label>الفئة</label><select name="category" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #e0e0e0;"><option value="news">أخبار</option><option value="event">فعاليات</option><option value="announcement">إعلانات</option><option value="workshop">ورشات</option></select></div>
-                <div class="form-group"><label>صورة الخبر</label><input type="file" id="postImage" accept="image/*" onchange="previewImage(this, 'postImgPreview')"><img id="postImgPreview" style="max-width: 200px; margin-top: 10px; border-radius: 8px; display: none;"></div>
+                
+                <div class="form-group">
+                    <label>صور الخبر (يمكنك اختيار عدة صور)</label>
+                    <div class="file-upload" onclick="document.getElementById('postImages').click()">
+                        <i class="fas fa-images"></i>
+                        <p>اضغط هنا لاختيار الصور (يمكنك اختيار أكثر من صورة)</p>
+                        <input type="file" id="postImages" accept="image/*" multiple style="display: none;" onchange="handlePostImages(this)">
+                    </div>
+                    <div id="postImagesPreview" class="image-preview-container"></div>
+                    <small style="color: #666; display: block; margin-top: 5px;">الصور سيتم حفظها بشكل دائم ولن تختفي بعد تحديث الصفحة</small>
+                </div>
+
                 <div class="form-group"><label>محتوى الخبر الكامل</label><textarea name="content" rows="10" required placeholder="اكتب محتوى الخبر الكامل هنا... يمكنك كتابة نص طويل وسيظهر كاملاً عند الضغط على قراءة المزيد"></textarea></div>
                 <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> نشر الخبر</button>
             </form>
@@ -273,6 +293,7 @@
     <div class="toast" id="toast"><i class="fas fa-check-circle"></i><span id="toastMessage">تمت العملية بنجاح!</span></div>
 
     <script>
+        // Data storage
         let data = {
             publications: JSON.parse(localStorage.getItem('pubs')) || [],
             posts: JSON.parse(localStorage.getItem('posts')) || [],
@@ -286,13 +307,15 @@
             }]
         };
 
-        // UPDATED LOGIN CREDENTIALS
+        // Temporary storage for post images before submission
+        let tempPostImages = [];
+
+        // Login
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const user = document.getElementById('username').value;
             const pass = document.getElementById('password').value;
             
-            // NEW PASSWORD: adminIncHSSAE2026
             if(user === 'admin' && pass === 'adminIncHSSAE2026') {
                 document.getElementById('loginScreen').style.opacity = '0';
                 setTimeout(() => {
@@ -363,6 +386,7 @@
             `).join('');
         }
 
+        // Publications
         function loadPublications() {
             const tbody = document.getElementById('publicationsTable');
             if(data.publications.length === 0) {
@@ -374,7 +398,7 @@
                     <td><strong>${pub.title}</strong></td>
                     <td>${pub.authors}</td>
                     <td>${new Date(pub.date).toLocaleDateString('ar-DZ')}</td>
-                    <td><a href="${pub.file}" target="_blank" class="btn-small btn-edit"><i class="fas fa-download"></i></a></td>
+                    <td>${pub.file ? '<a href="' + pub.file + '" target="_blank" class="btn-small btn-edit"><i class="fas fa-download"></i></a>' : '-'}</td>
                     <td class="action-btns"><button class="btn-small btn-delete" onclick="deletePublication(${index})"><i class="fas fa-trash"></i></button></td>
                 </tr>
             `).join('');
@@ -384,22 +408,36 @@
             e.preventDefault();
             const formData = new FormData(e.target);
             const fileInput = document.getElementById('pubFile');
-            const pub = {
-                id: Date.now(),
-                title: formData.get('title'),
-                authors: formData.get('authors'),
-                date: formData.get('date'),
-                journal: formData.get('journal'),
-                abstract: formData.get('abstract'),
-                file: fileInput.files.length > 0 ? URL.createObjectURL(fileInput.files[0]) : '#'
+            
+            const savePublication = (fileData) => {
+                const pub = {
+                    id: Date.now(),
+                    title: formData.get('title'),
+                    authors: formData.get('authors'),
+                    date: formData.get('date'),
+                    journal: formData.get('journal'),
+                    abstract: formData.get('abstract'),
+                    file: fileData
+                };
+                data.publications.push(pub);
+                localStorage.setItem('pubs', JSON.stringify(data.publications));
+                closeModal('publicationModal');
+                e.target.reset();
+                document.getElementById('pubFileName').textContent = '';
+                showToast('تم إضافة المنشور بنجاح!');
+                loadPublications();
+                updateStats();
             };
-            data.publications.push(pub);
-            localStorage.setItem('pubs', JSON.stringify(data.publications));
-            closeModal('publicationModal');
-            e.target.reset();
-            showToast('تم إضافة المنشور بنجاح!');
-            loadPublications();
-            updateStats();
+
+            if(fileInput.files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    savePublication(e.target.result);
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                savePublication(null);
+            }
         });
 
         function deletePublication(index) {
@@ -412,6 +450,7 @@
             }
         }
 
+        // Posts with Multiple Images (Base64)
         function loadPosts() {
             const container = document.getElementById('postsGrid');
             if(data.posts.length === 0) {
@@ -420,37 +459,89 @@
             }
             container.innerHTML = data.posts.map((post, index) => `
                 <div class="card" style="overflow: hidden;">
-                    ${post.image ? `<img src="${post.image}" style="width: 100%; height: 200px; object-fit: cover;">` : '<div style="height: 200px; background: linear-gradient(135deg, var(--primary), var(--dark)); display: flex; align-items: center; justify-content: center; color: white; font-size: 48px;"><i class="fas fa-newspaper"></i></div>'}
+                    ${post.images && post.images.length > 0 ? 
+                        `<div style="position: relative; height: 200px; overflow: hidden;">
+                            <img src="${post.images[0]}" style="width: 100%; height: 100%; object-fit: cover;">
+                            ${post.images.length > 1 ? `<span style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 5px 10px; border-radius: 15px; font-size: 12px;"><i class="fas fa-images"></i> ${post.images.length} صور</span>` : ''}
+                            <span style="position: absolute; top: 10px; right: 10px; background: var(--secondary); color: var(--dark); padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: 700;">${getCategoryName(post.category)}</span>
+                        </div>` : 
+                        `<div style="height: 200px; background: linear-gradient(135deg, var(--primary), var(--dark)); display: flex; align-items: center; justify-content: center; color: white; font-size: 48px; position: relative;">
+                            <i class="fas fa-newspaper"></i>
+                            <span style="position: absolute; top: 10px; right: 10px; background: var(--secondary); color: var(--dark); padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: 700;">${getCategoryName(post.category)}</span>
+                        </div>`
+                    }
                     <div style="padding: 20px;">
-                        <span style="color: var(--secondary); font-size: 12px; font-weight: 700;">${getCategoryName(post.category)}</span>
-                        <h3 style="color: var(--primary); margin: 10px 0;">${post.title}</h3>
+                        <h3 style="color: var(--primary); margin-bottom: 10px; font-size: 18px; font-weight: 800;">${post.title}</h3>
                         <p style="color: #666; line-height: 1.6; margin-bottom: 15px;">${post.content.substring(0, 100)}...</p>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="color: #999; font-size: 13px;">${new Date(post.date).toLocaleDateString('ar-DZ')}</span>
-                            <button class="btn-small btn-delete" onclick="deletePost(${index})"><i class="fas fa-trash"></i> حذف</button>
+                        
+                        ${post.images && post.images.length > 1 ? `
+                        <div class="post-images-grid">
+                            ${post.images.slice(1, 4).map(img => `<img src="${img}" style="opacity: 0.8;">`).join('')}
+                            ${post.images.length > 4 ? `<div style="background: rgba(0,0,0,0.5); color: white; display: flex; align-items: center; justify-content: center; border-radius: 5px; font-size: 12px;">+${post.images.length - 4}</div>` : ''}
+                        </div>` : ''}
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                            <span style="color: #999; font-size: 13px;"><i class="fas fa-calendar"></i> ${new Date(post.date).toLocaleDateString('ar-DZ')}</span>
+                            <div class="action-btns">
+                                <a href="article.html?id=${post.id}" target="_blank" class="btn-small btn-view"><i class="fas fa-eye"></i></a>
+                                <button class="btn-small btn-delete" onclick="deletePost(${index})"><i class="fas fa-trash"></i></button>
+                            </div>
                         </div>
                     </div>
                 </div>
             `).join('');
         }
 
+        // Handle multiple images selection for posts
+        function handlePostImages(input) {
+            const files = Array.from(input.files);
+            const container = document.getElementById('postImagesPreview');
+            
+            files.forEach((file) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    tempPostImages.push(e.target.result);
+                    refreshPostImagesPreview();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function refreshPostImagesPreview() {
+            const container = document.getElementById('postImagesPreview');
+            container.innerHTML = tempPostImages.map((img, idx) => `
+                <div class="preview-item">
+                    <img src="${img}">
+                    <button type="button" class="remove-img" onclick="removeTempImage(${idx})"><i class="fas fa-times"></i></button>
+                </div>
+            `).join('');
+        }
+
+        function removeTempImage(index) {
+            tempPostImages.splice(index, 1);
+            refreshPostImagesPreview();
+        }
+
         document.getElementById('postForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const formData = new FormData(e.target);
-            const imageInput = document.getElementById('postImage');
+            
             const post = {
                 id: Date.now(),
                 title: formData.get('title'),
                 category: formData.get('category'),
                 content: formData.get('content'),
                 date: new Date().toISOString(),
-                image: imageInput.files.length > 0 ? URL.createObjectURL(imageInput.files[0]) : null
+                images: [...tempPostImages] // Copy array of Base64 images
             };
+            
             data.posts.unshift(post);
             localStorage.setItem('posts', JSON.stringify(data.posts));
+            
             closeModal('postModal');
             e.target.reset();
-            document.getElementById('postImgPreview').style.display = 'none';
+            document.getElementById('postImagesPreview').innerHTML = '';
+            tempPostImages = [];
             showToast('تم نشر الخبر بنجاح!');
             loadPosts();
             updateStats();
@@ -466,6 +557,7 @@
             }
         }
 
+        // Files
         function loadFiles() {
             const tbody = document.getElementById('filesTable');
             if(data.files.length === 0) {
@@ -476,7 +568,7 @@
                 <tr>
                     <td><i class="fas fa-file" style="color: var(--primary); margin-left: 8px;"></i> ${file.name}</td>
                     <td>${file.type || 'PDF'}</td>
-                    <td>${file.size || '2.5 MB'}</td>
+                    <td>${file.size || '-'}</td>
                     <td>${new Date(file.date).toLocaleDateString('ar-DZ')}</td>
                     <td class="action-btns">
                         <a href="${file.url}" download class="btn-small btn-edit"><i class="fas fa-download"></i></a>
@@ -491,23 +583,28 @@
             const formData = new FormData(e.target);
             const fileInput = document.getElementById('uploadFile');
             const file = fileInput.files[0];
-            const fileData = {
-                id: Date.now(),
-                name: formData.get('filename'),
-                description: formData.get('description'),
-                url: URL.createObjectURL(file),
-                type: file.name.split('.').pop().toUpperCase(),
-                size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
-                date: new Date().toISOString()
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const fileData = {
+                    id: Date.now(),
+                    name: formData.get('filename'),
+                    description: formData.get('description'),
+                    url: e.target.result,
+                    type: file.name.split('.').pop().toUpperCase(),
+                    size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
+                    date: new Date().toISOString()
+                };
+                data.files.push(fileData);
+                localStorage.setItem('files', JSON.stringify(data.files));
+                closeModal('fileModal');
+                e.target.reset();
+                document.getElementById('fileInfo').textContent = '';
+                showToast('تم رفع الملف بنجاح!');
+                loadFiles();
+                updateStats();
             };
-            data.files.push(fileData);
-            localStorage.setItem('files', JSON.stringify(data.files));
-            closeModal('fileModal');
-            e.target.reset();
-            document.getElementById('fileInfo').textContent = '';
-            showToast('تم رفع الملف بنجاح!');
-            loadFiles();
-            updateStats();
+            reader.readAsDataURL(file);
         });
 
         function deleteFile(index) {
@@ -520,6 +617,7 @@
             }
         }
 
+        // Gallery
         function loadGallery() {
             const container = document.getElementById('galleryGrid');
             if(data.images.length === 0) {
@@ -542,20 +640,29 @@
             const formData = new FormData(e.target);
             const files = document.getElementById('galleryImages').files;
             const caption = formData.get('caption');
-            for(let file of files) {
-                data.images.push({
-                    id: Date.now() + Math.random(),
-                    url: URL.createObjectURL(file),
-                    caption: caption || file.name,
-                    date: new Date().toISOString()
-                });
-            }
-            localStorage.setItem('images', JSON.stringify(data.images));
-            closeModal('imageModal');
-            e.target.reset();
-            document.getElementById('imagePreviewContainer').innerHTML = '';
-            showToast(`تم إضافة ${files.length} صورة بنجاح!`);
-            loadGallery();
+            
+            let processed = 0;
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    data.images.push({
+                        id: Date.now() + Math.random(),
+                        url: e.target.result,
+                        caption: caption || file.name,
+                        date: new Date().toISOString()
+                    });
+                    processed++;
+                    if(processed === files.length) {
+                        localStorage.setItem('images', JSON.stringify(data.images));
+                        closeModal('imageModal');
+                        e.target.reset();
+                        document.getElementById('imagePreviewContainer').innerHTML = '';
+                        showToast(`تم إضافة ${files.length} صورة بنجاح!`);
+                        loadGallery();
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
         });
 
         function deleteImage(index) {
@@ -567,6 +674,7 @@
             }
         }
 
+        // Messages
         function loadMessages() {
             const container = document.getElementById('messagesList');
             if(data.messages.length === 0) {
@@ -616,7 +724,14 @@
             document.getElementById('msgCount').textContent = unread;
         }
 
-        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        // Utilities
+        function openModal(id) { 
+            document.getElementById(id).classList.add('active'); 
+            if(id === 'postModal') {
+                tempPostImages = [];
+                document.getElementById('postImagesPreview').innerHTML = '';
+            }
+        }
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
         
         function showToast(message) {
@@ -630,18 +745,6 @@
             if(input.files.length > 0) document.getElementById(displayId).textContent = 'الملف المختار: ' + input.files[0].name;
         }
 
-        function previewImage(input, previewId) {
-            if(input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = document.getElementById(previewId);
-                    img.src = e.target.result;
-                    img.style.display = 'block';
-                }
-                reader.readAsDataURL(input.files[0]);
-            }
-        }
-
         function previewMultipleImages(input) {
             const container = document.getElementById('imagePreviewContainer');
             container.innerHTML = '';
@@ -650,7 +753,7 @@
                     const reader = new FileReader();
                     reader.onload = function(e) {
                         container.innerHTML += `<img src="${e.target.result}" style="width: 100%; height: 100px; object-fit: cover; border-radius: 5px;">`;
-                    }
+                    };
                     reader.readAsDataURL(file);
                 });
             }
