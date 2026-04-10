@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Incubator HSSA El Oued</title>
+    <title>Business Seed Incubator</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -112,7 +112,7 @@
             <a href="#" class="logo">
                 <img src="https://i.ibb.co/chM4p5LP/logo.png" alt="Logo" onerror="this.src='https://via.placeholder.com/70x70/1a5f2a/ffffff?text=BS'">
                 <div class="logo-text">
-                    <h1>Incubator HSSA El Oued</h1>
+                    <h1>Business Seed</h1>
                     <p>حاضنة الأعمال الرقمية</p>
                 </div>
             </a>
@@ -209,26 +209,78 @@
     </section>
 
     <footer>
-        <p>جميع الحقوق محفوظة © 2026 حاضنة الأعمال الرقمية - </p>
+        <p>جميع الحقوق محفوظة © 2025 | حاضنة الأعمال الرقمية - Business Seed</p>
         <p>المدرسة العليا للفلاحة الصحراوية بالوادي</p>
         <div class="footer-links">
-            <a href="mailto:incubator@esas-eloued.dz">incubator@esas-eloued.dz</a>
+            <a href="mailto:incubator@univ-eloued.dz">incubator@univ-eloued.dz</a>
             <a href="tel:0021332120740">0021332120740</a>
         </div>
     </footer>
 
     <script>
+        // ==========================================
+        // INDEXEDDB SYSTEM FOR PUBLIC SITE
+        // ==========================================
+        
+        const DB_NAME = 'BusinessSeedDB';
+        const DB_VERSION = 1;
+        let db = null;
+
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                
+                request.onerror = () => {
+                    console.log('IndexedDB not available');
+                    resolve();
+                };
+                
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    resolve();
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    const database = event.target.result;
+                    if (!database.objectStoreNames.contains('images')) {
+                        database.createObjectStore('images', { keyPath: 'id' });
+                    }
+                };
+            });
+        }
+
+        function getImage(id) {
+            return new Promise((resolve) => {
+                if (!db) {
+                    resolve(localStorage.getItem('img_' + id));
+                    return;
+                }
+                const transaction = db.transaction(['images'], 'readonly');
+                const store = transaction.objectStore('images');
+                const request = store.get(id);
+                request.onsuccess = () => resolve(request.result ? request.result.data : null);
+                request.onerror = () => resolve(null);
+            });
+        }
+
+        // ==========================================
+        // LOAD CONTENT
+        // ==========================================
+
         function getCategoryName(cat) {
             const cats = { 'news': 'أخبار', 'event': 'فعاليات', 'announcement': 'إعلانات', 'workshop': 'ورشات' };
             return cats[cat] || 'خبر';
         }
 
-        function loadContent() {
+        async function loadContent() {
+            await initDB();
+            
             const publications = JSON.parse(localStorage.getItem('pubs')) || [];
             const posts = JSON.parse(localStorage.getItem('posts')) || [];
             const files = JSON.parse(localStorage.getItem('files')) || [];
             const images = JSON.parse(localStorage.getItem('images')) || [];
 
+            // Load Publications
             const pubContainer = document.getElementById('publicationsList');
             if(publications.length === 0) {
                 pubContainer.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><i class="fas fa-book"></i><h3>لا توجد منشورات حالياً</h3><p>سيتم إضافة المنشورات العلمية قريباً</p></div>';
@@ -242,25 +294,37 @@
                             ${pub.journal ? `<span><i class="fas fa-journal-whills"></i> ${pub.journal}</span>` : ''}
                         </div>
                         <p>${pub.abstract || 'لا يوجد ملخص متوفر'}</p>
-                        <a href="${pub.file}" class="download-btn" target="_blank"><i class="fas fa-download"></i> تحميل المنشور</a>
+                        ${pub.hasFile ? `<button class="download-btn" onclick="downloadPub(${pub.id})"><i class="fas fa-download"></i> تحميل المنشور</button>` : ''}
                     </div>
                 `).join('');
             }
 
+            // Load Posts with Images
             const newsContainer = document.getElementById('newsList');
             if(posts.length === 0) {
                 newsContainer.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><i class="fas fa-newspaper"></i><h3>لا توجد أخبار حالياً</h3></div>';
             } else {
+                // Load images for each post
+                for(let post of posts) {
+                    if(post.imageIds && post.imageIds.length > 0) {
+                        post.images = [];
+                        for(let imgId of post.imageIds) {
+                            const imgData = await getImage(imgId);
+                            if(imgData) post.images.push(imgData);
+                        }
+                    }
+                }
+                
                 newsContainer.innerHTML = posts.map(post => `
                     <div class="news-card">
-                        ${post.image ? 
-                            `<div style="position: relative;"><img src="${post.image}" alt="${post.title}"><span style="position: absolute; top: 15px; right: 15px; background: var(--secondary); color: var(--dark); padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: 700;">${getCategoryName(post.category)}</span></div>` : 
+                        ${post.images && post.images.length > 0 ? 
+                            `<div style="position: relative;"><img src="${post.images[0]}" alt="${post.title}" onerror="this.style.display='none'"><span style="position: absolute; top: 15px; right: 15px; background: var(--secondary); color: var(--dark); padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: 700;">${getCategoryName(post.category)}</span></div>` : 
                             `<div style="height: 220px; background: linear-gradient(135deg, var(--primary), var(--dark)); display: flex; align-items: center; justify-content: center; color: white; font-size: 48px;"><i class="fas fa-newspaper"></i></div>`
                         }
                         <div class="news-content">
                             <span class="date"><i class="fas fa-calendar-alt"></i> ${new Date(post.date).toLocaleDateString('ar-DZ')}</span>
                             <h3>${post.title}</h3>
-                            <p>${post.content.substring(0, 100)}...</p>
+                            <p>${post.content ? post.content.substring(0, 100) : ''}...</p>
                             <a href="article.html?id=${post.id}" class="btn" style="width: 100%; text-align: center; margin-top: auto; padding: 12px; font-size: 14px; text-decoration: none;">
                                 قراءة المزيد <i class="fas fa-arrow-left" style="margin-right: 5px;"></i>
                             </a>
@@ -269,13 +333,21 @@
                 `).join('');
             }
 
+            // Load Gallery
             const galleryContainer = document.getElementById('galleryList');
             if(images.length === 0) {
                 galleryContainer.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><i class="fas fa-images"></i><h3>لا توجد صور حالياً</h3></div>';
             } else {
+                // Load actual images
+                for(let img of images) {
+                    if(img.imageId) {
+                        img.url = await getImage(img.imageId);
+                    }
+                }
+                
                 galleryContainer.innerHTML = images.map(img => `
-                    <div class="gallery-item" onclick="window.open('${img.url}', '_blank')">
-                        <img src="${img.url}" alt="${img.caption || 'صورة'}">
+                    <div class="gallery-item" onclick="window.open('${img.url || '#'}', '_blank')">
+                        <img src="${img.url || ''}" alt="${img.caption || 'صورة'}" onerror="this.src='https://via.placeholder.com/250x250/cccccc/666666?text=Image'">
                         <div class="gallery-overlay">${img.caption || 'صورة من الأرشيف'}</div>
                     </div>
                 `).join('');
