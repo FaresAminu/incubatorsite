@@ -119,6 +119,9 @@
         .toast { position: fixed; bottom: 30px; left: 30px; background: var(--dark); color: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); display: none; align-items: center; gap: 10px; z-index: 3000; animation: slideIn 0.3s; }
         @keyframes slideIn { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         
+        .storage-warning { background: #fff3cd; color: #856404; padding: 10px 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; display: none; }
+        .storage-warning.show { display: block; }
+        
         @media (max-width: 768px) {
             .sidebar { transform: translateX(100%); transition: transform 0.3s; }
             .sidebar.open { transform: translateX(0); }
@@ -179,6 +182,11 @@
                 <div style="display: flex; gap: 15px;">
                     <a href="index.html" target="_blank" class="btn btn-primary"><i class="fas fa-eye"></i> معاينة الموقع</a>
                 </div>
+            </div>
+
+            <div class="storage-warning" id="storageWarning">
+                <i class="fas fa-exclamation-triangle"></i> 
+                مساحة التخزين محدودة. يُفضل استخدام صور صغيرة (أقل من 500KB لكل صورة) لضمان عدم فقدان البيانات.
             </div>
 
             <div class="content-section active" id="dashboard">
@@ -250,17 +258,17 @@
                 <div class="form-group"><label>الفئة</label><select name="category" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #e0e0e0;"><option value="news">أخبار</option><option value="event">فعاليات</option><option value="announcement">إعلانات</option><option value="workshop">ورشات</option></select></div>
                 
                 <div class="form-group">
-                    <label>صور الخبر (يمكنك اختيار عدة صور)</label>
+                    <label>صور الخبر (يمكنك اختيار عدة صور - حجم كل صورة يفضل أن يكون أقل من 500KB)</label>
                     <div class="file-upload" onclick="document.getElementById('postImages').click()">
                         <i class="fas fa-images"></i>
-                        <p>اضغط هنا لاختيار الصور (يمكنك اختيار أكثر من صورة)</p>
+                        <p>اضغط هنا لاختيار الصور</p>
+                        <small style="color: #666; display: block; margin-top: 10px;">للحفاظ على البيانات، استخدم صور مضغوطة</small>
                         <input type="file" id="postImages" accept="image/*" multiple style="display: none;" onchange="handlePostImages(this)">
                     </div>
                     <div id="postImagesPreview" class="image-preview-container"></div>
-                    <small style="color: #666; display: block; margin-top: 5px;">الصور سيتم حفظها بشكل دائم ولن تختفي بعد تحديث الصفحة</small>
                 </div>
 
-                <div class="form-group"><label>محتوى الخبر الكامل</label><textarea name="content" rows="10" required placeholder="اكتب محتوى الخبر الكامل هنا... يمكنك كتابة نص طويل وسيظهر كاملاً عند الضغط على قراءة المزيد"></textarea></div>
+                <div class="form-group"><label>محتوى الخبر الكامل</label><textarea name="content" rows="10" required placeholder="اكتب محتوى الخبر الكامل هنا..."></textarea></div>
                 <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> نشر الخبر</button>
             </form>
         </div>
@@ -282,7 +290,7 @@
         <div class="modal-content">
             <div class="modal-header"><h3>إضافة صور للمعرض</h3><button class="close-btn" onclick="closeModal('imageModal')">&times;</button></div>
             <form id="imageForm">
-                <div class="form-group"><label>اختيار الصور</label><input type="file" id="galleryImages" multiple accept="image/*" onchange="previewMultipleImages(this)"></div>
+                <div class="form-group"><label>اختيار الصور (يفضل صور أقل من 500KB)</label><input type="file" id="galleryImages" multiple accept="image/*" onchange="previewMultipleImages(this)"></div>
                 <div id="imagePreviewContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin: 20px 0;"></div>
                 <div class="form-group"><label>وصف/عنوان الصور</label><input type="text" name="caption" placeholder="وصف عام للصور"></div>
                 <button type="submit" class="btn btn-primary"><i class="fas fa-images"></i> إضافة للمعرض</button>
@@ -293,30 +301,171 @@
     <div class="toast" id="toast"><i class="fas fa-check-circle"></i><span id="toastMessage">تمت العملية بنجاح!</span></div>
 
     <script>
-        // Data storage
+        // ==========================================
+        // IMPROVED STORAGE SYSTEM WITH FALLBACK
+        // ==========================================
+        
+        // Try to use IndexedDB, fallback to localStorage with compression
+        const DB_NAME = 'BusinessSeedDB';
+        const DB_VERSION = 1;
+        let db = null;
+        let useIndexedDB = false;
+
+        // Initialize IndexedDB
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                
+                request.onerror = () => {
+                    console.log('IndexedDB not available, using localStorage');
+                    useIndexedDB = false;
+                    resolve();
+                };
+                
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    useIndexedDB = true;
+                    console.log('IndexedDB initialized');
+                    resolve();
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    const database = event.target.result;
+                    if (!database.objectStoreNames.contains('images')) {
+                        database.createObjectStore('images', { keyPath: 'id' });
+                    }
+                    if (!database.objectStoreNames.contains('files')) {
+                        database.createObjectStore('files', { keyPath: 'id' });
+                    }
+                };
+            });
+        }
+
+        // Save image to IndexedDB or localStorage
+        async function saveImage(id, imageData) {
+            if (useIndexedDB && db) {
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction(['images'], 'readwrite');
+                    const store = transaction.objectStore('images');
+                    const request = store.put({ id: id, data: imageData });
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject();
+                });
+            } else {
+                // Fallback: save to localStorage with chunking for large images
+                try {
+                    localStorage.setItem('img_' + id, imageData);
+                    return Promise.resolve();
+                } catch (e) {
+                    // If quota exceeded, try to compress or show warning
+                    showToast('تحذير: مساحة التخزين ممتلئة. الصور قد لا تُحفظ.');
+                    return Promise.reject(e);
+                }
+            }
+        }
+
+        // Get image from storage
+        async function getImage(id) {
+            if (useIndexedDB && db) {
+                return new Promise((resolve) => {
+                    const transaction = db.transaction(['images'], 'readonly');
+                    const store = transaction.objectStore('images');
+                    const request = store.get(id);
+                    request.onsuccess = () => resolve(request.result ? request.result.data : null);
+                    request.onerror = () => resolve(null);
+                });
+            } else {
+                return Promise.resolve(localStorage.getItem('img_' + id));
+            }
+        }
+
+        // Delete image from storage
+        async function deleteImageFromStorage(id) {
+            if (useIndexedDB && db) {
+                return new Promise((resolve) => {
+                    const transaction = db.transaction(['images'], 'readwrite');
+                    const store = transaction.objectStore('images');
+                    store.delete(id);
+                    resolve();
+                });
+            } else {
+                localStorage.removeItem('img_' + id);
+                return Promise.resolve();
+            }
+        }
+
+        // Data management
         let data = {
-            publications: JSON.parse(localStorage.getItem('pubs')) || [],
-            posts: JSON.parse(localStorage.getItem('posts')) || [],
-            files: JSON.parse(localStorage.getItem('files')) || [],
-            images: JSON.parse(localStorage.getItem('images')) || [],
-            messages: JSON.parse(localStorage.getItem('msgs')) || [{
+            publications: [],
+            posts: [],
+            files: [],
+            images: [],
+            messages: []
+        };
+
+        // Load all data
+        async function loadAllData() {
+            await initDB();
+            
+            // Load from localStorage (metadata only for images)
+            data.publications = JSON.parse(localStorage.getItem('pubs')) || [];
+            data.posts = JSON.parse(localStorage.getItem('posts')) || [];
+            data.files = JSON.parse(localStorage.getItem('files')) || [];
+            data.images = JSON.parse(localStorage.getItem('images')) || [];
+            data.messages = JSON.parse(localStorage.getItem('msgs')) || [{
                 id: 1, name: "أحمد محمد", email: "ahmed@example.com",
                 subject: "استفسار حول التسجيل",
                 content: "أرغب في التسجيل في الحاضنة و لدي بعض الأسئلة حول الشروط المطلوبة...",
                 date: new Date().toISOString(), read: false
-            }]
-        };
+            }];
+
+            // Load actual images
+            for (let post of data.posts) {
+                if (post.imageIds && post.imageIds.length > 0) {
+                    post.images = [];
+                    for (let imgId of post.imageIds) {
+                        const imgData = await getImage(imgId);
+                        if (imgData) post.images.push(imgData);
+                    }
+                } else {
+                    post.images = post.images || [];
+                }
+            }
+
+            // Load gallery images
+            for (let img of data.images) {
+                if (img.imageId) {
+                    const imgData = await getImage(img.imageId);
+                    if (imgData) img.url = imgData;
+                }
+            }
+        }
+
+        // Save posts with image references
+        async function savePosts() {
+            const postsToSave = data.posts.map(post => ({
+                ...post,
+                images: [], // Don't save full images in localStorage
+                imageIds: post.imageIds || []
+            }));
+            localStorage.setItem('posts', JSON.stringify(postsToSave));
+        }
 
         // Temporary storage for post images before submission
         let tempPostImages = [];
+        let tempImageIds = [];
 
-        // Login
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        // ==========================================
+        // LOGIN SYSTEM
+        // ==========================================
+
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const user = document.getElementById('username').value;
             const pass = document.getElementById('password').value;
             
             if(user === 'admin' && pass === 'adminIncHSSAE2026') {
+                await loadAllData();
                 document.getElementById('loginScreen').style.opacity = '0';
                 setTimeout(() => {
                     document.getElementById('loginScreen').classList.add('hidden');
@@ -329,6 +478,10 @@
         });
 
         function logout() { location.reload(); }
+
+        // ==========================================
+        // NAVIGATION
+        // ==========================================
 
         function showSection(sectionId) {
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
@@ -358,6 +511,11 @@
             updateStats();
             loadRecentActivity();
             updateMessageCount();
+            
+            // Show storage warning if not using IndexedDB
+            if (!useIndexedDB) {
+                document.getElementById('storageWarning').classList.add('show');
+            }
         }
 
         function updateStats() {
@@ -386,7 +544,10 @@
             `).join('');
         }
 
-        // Publications
+        // ==========================================
+        // PUBLICATIONS
+        // ==========================================
+
         function loadPublications() {
             const tbody = document.getElementById('publicationsTable');
             if(data.publications.length === 0) {
@@ -398,50 +559,57 @@
                     <td><strong>${pub.title}</strong></td>
                     <td>${pub.authors}</td>
                     <td>${new Date(pub.date).toLocaleDateString('ar-DZ')}</td>
-                    <td>${pub.file ? '<a href="' + pub.file + '" target="_blank" class="btn-small btn-edit"><i class="fas fa-download"></i></a>' : '-'}</td>
+                    <td>${pub.hasFile ? '<span class="btn-small btn-edit"><i class="fas fa-check"></i> نعم</span>' : '-'}</td>
                     <td class="action-btns"><button class="btn-small btn-delete" onclick="deletePublication(${index})"><i class="fas fa-trash"></i></button></td>
                 </tr>
             `).join('');
         }
 
-        document.getElementById('publicationForm').addEventListener('submit', function(e) {
+        document.getElementById('publicationForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const formData = new FormData(e.target);
             const fileInput = document.getElementById('pubFile');
             
-            const savePublication = (fileData) => {
-                const pub = {
-                    id: Date.now(),
-                    title: formData.get('title'),
-                    authors: formData.get('authors'),
-                    date: formData.get('date'),
-                    journal: formData.get('journal'),
-                    abstract: formData.get('abstract'),
-                    file: fileData
+            const pub = {
+                id: Date.now(),
+                title: formData.get('title'),
+                authors: formData.get('authors'),
+                date: formData.get('date'),
+                journal: formData.get('journal'),
+                abstract: formData.get('abstract'),
+                hasFile: fileInput.files.length > 0
+            };
+
+            // Save file separately if exists
+            if(fileInput.files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    await saveImage('pub_' + pub.id, e.target.result);
+                    data.publications.push(pub);
+                    localStorage.setItem('pubs', JSON.stringify(data.publications));
+                    closeModal('publicationModal');
+                    e.target.reset();
+                    document.getElementById('pubFileName').textContent = '';
+                    showToast('تم إضافة المنشور بنجاح!');
+                    loadPublications();
+                    updateStats();
                 };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
                 data.publications.push(pub);
                 localStorage.setItem('pubs', JSON.stringify(data.publications));
                 closeModal('publicationModal');
                 e.target.reset();
-                document.getElementById('pubFileName').textContent = '';
                 showToast('تم إضافة المنشور بنجاح!');
                 loadPublications();
                 updateStats();
-            };
-
-            if(fileInput.files.length > 0) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    savePublication(e.target.result);
-                };
-                reader.readAsDataURL(fileInput.files[0]);
-            } else {
-                savePublication(null);
             }
         });
 
         function deletePublication(index) {
             if(confirm('هل أنت متأكد من حذف هذا المنشور؟')) {
+                const pub = data.publications[index];
+                deleteImageFromStorage('pub_' + pub.id);
                 data.publications.splice(index, 1);
                 localStorage.setItem('pubs', JSON.stringify(data.publications));
                 loadPublications();
@@ -450,7 +618,10 @@
             }
         }
 
-        // Posts with Multiple Images (Base64)
+        // ==========================================
+        // POSTS WITH MULTIPLE IMAGES
+        // ==========================================
+
         function loadPosts() {
             const container = document.getElementById('postsGrid');
             if(data.posts.length === 0) {
@@ -492,16 +663,49 @@
             `).join('');
         }
 
-        // Handle multiple images selection for posts
         function handlePostImages(input) {
             const files = Array.from(input.files);
-            const container = document.getElementById('postImagesPreview');
             
             files.forEach((file) => {
+                // Compress image before storing
+                compressImage(file, 800, 600, 0.7).then(compressedData => {
+                    tempPostImages.push(compressedData);
+                    refreshPostImagesPreview();
+                });
+            });
+        }
+
+        // Compress image to reduce storage size
+        function compressImage(file, maxWidth, maxHeight, quality) {
+            return new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    tempPostImages.push(e.target.result);
-                    refreshPostImagesPreview();
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        if (width > height) {
+                            if (width > maxWidth) {
+                                height *= maxWidth / width;
+                                width = maxWidth;
+                            }
+                        } else {
+                            if (height > maxHeight) {
+                                width *= maxHeight / height;
+                                height = maxHeight;
+                            }
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    };
+                    img.src = e.target.result;
                 };
                 reader.readAsDataURL(file);
             });
@@ -522,21 +726,32 @@
             refreshPostImagesPreview();
         }
 
-        document.getElementById('postForm').addEventListener('submit', function(e) {
+        document.getElementById('postForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const formData = new FormData(e.target);
             
+            const postId = Date.now();
+            const imageIds = [];
+            
+            // Save each image with unique ID
+            for (let i = 0; i < tempPostImages.length; i++) {
+                const imgId = 'post_' + postId + '_' + i;
+                await saveImage(imgId, tempPostImages[i]);
+                imageIds.push(imgId);
+            }
+            
             const post = {
-                id: Date.now(),
+                id: postId,
                 title: formData.get('title'),
                 category: formData.get('category'),
                 content: formData.get('content'),
                 date: new Date().toISOString(),
-                images: [...tempPostImages] // Copy array of Base64 images
+                images: [...tempPostImages], // Keep for immediate display
+                imageIds: imageIds // For reloading later
             };
             
             data.posts.unshift(post);
-            localStorage.setItem('posts', JSON.stringify(data.posts));
+            await savePosts();
             
             closeModal('postModal');
             e.target.reset();
@@ -547,17 +762,27 @@
             updateStats();
         });
 
-        function deletePost(index) {
+        async function deletePost(index) {
             if(confirm('هل أنت متأكد من حذف هذا الخبر؟')) {
+                const post = data.posts[index];
+                // Delete all associated images
+                if (post.imageIds) {
+                    for (let imgId of post.imageIds) {
+                        await deleteImageFromStorage(imgId);
+                    }
+                }
                 data.posts.splice(index, 1);
-                localStorage.setItem('posts', JSON.stringify(data.posts));
+                await savePosts();
                 loadPosts();
                 updateStats();
                 showToast('تم الحذف بنجاح');
             }
         }
 
-        // Files
+        // ==========================================
+        // FILES
+        // ==========================================
+
         function loadFiles() {
             const tbody = document.getElementById('filesTable');
             if(data.files.length === 0) {
@@ -571,26 +796,40 @@
                     <td>${file.size || '-'}</td>
                     <td>${new Date(file.date).toLocaleDateString('ar-DZ')}</td>
                     <td class="action-btns">
-                        <a href="${file.url}" download class="btn-small btn-edit"><i class="fas fa-download"></i></a>
+                        ${file.imageId ? `<button class="btn-small btn-edit" onclick="downloadFile('${file.imageId}')"><i class="fas fa-download"></i></button>` : '-'}
                         <button class="btn-small btn-delete" onclick="deleteFile(${index})"><i class="fas fa-trash"></i></button>
                     </td>
                 </tr>
             `).join('');
         }
 
-        document.getElementById('fileForm').addEventListener('submit', function(e) {
+        async function downloadFile(imageId) {
+            const fileData = await getImage(imageId);
+            if (fileData) {
+                const link = document.createElement('a');
+                link.href = fileData;
+                link.download = 'file';
+                link.click();
+            }
+        }
+
+        document.getElementById('fileForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const formData = new FormData(e.target);
             const fileInput = document.getElementById('uploadFile');
             const file = fileInput.files[0];
             
+            const imageId = 'file_' + Date.now();
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
+                // For large files, we might need to chunk them
+                await saveImage(imageId, e.target.result);
+                
                 const fileData = {
                     id: Date.now(),
                     name: formData.get('filename'),
                     description: formData.get('description'),
-                    url: e.target.result,
+                    imageId: imageId,
                     type: file.name.split('.').pop().toUpperCase(),
                     size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
                     date: new Date().toISOString()
@@ -607,8 +846,12 @@
             reader.readAsDataURL(file);
         });
 
-        function deleteFile(index) {
+        async function deleteFile(index) {
             if(confirm('هل أنت متأكد من حذف هذا الملف؟')) {
+                const file = data.files[index];
+                if (file.imageId) {
+                    await deleteImageFromStorage(file.imageId);
+                }
                 data.files.splice(index, 1);
                 localStorage.setItem('files', JSON.stringify(data.files));
                 loadFiles();
@@ -617,7 +860,10 @@
             }
         }
 
-        // Gallery
+        // ==========================================
+        // GALLERY
+        // ==========================================
+
         function loadGallery() {
             const container = document.getElementById('galleryGrid');
             if(data.images.length === 0) {
@@ -626,47 +872,51 @@
             }
             container.innerHTML = data.images.map((img, index) => `
                 <div class="gallery-item">
-                    <img src="${img.url}" alt="${img.caption}">
+                    <img src="${img.url}" alt="${img.caption}" onerror="this.src='https://via.placeholder.com/200x200/cccccc/666666?text=Image+Not+Found'">
                     <div class="gallery-overlay">
                         <p>${img.caption || 'صورة من الأرشيف'}</p>
-                        <button onclick="deleteImage(${index})" style="background: var(--danger); color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-top: 5px;"><i class="fas fa-trash"></i></button>
+                        <button onclick="deleteGalleryImage(${index})" style="background: var(--danger); color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-top: 5px;"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
             `).join('');
         }
 
-        document.getElementById('imageForm').addEventListener('submit', function(e) {
+        document.getElementById('imageForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const formData = new FormData(e.target);
             const files = document.getElementById('galleryImages').files;
             const caption = formData.get('caption');
             
-            let processed = 0;
-            Array.from(files).forEach(file => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    data.images.push({
-                        id: Date.now() + Math.random(),
-                        url: e.target.result,
-                        caption: caption || file.name,
-                        date: new Date().toISOString()
-                    });
-                    processed++;
-                    if(processed === files.length) {
-                        localStorage.setItem('images', JSON.stringify(data.images));
-                        closeModal('imageModal');
-                        e.target.reset();
-                        document.getElementById('imagePreviewContainer').innerHTML = '';
-                        showToast(`تم إضافة ${files.length} صورة بنجاح!`);
-                        loadGallery();
-                    }
-                };
-                reader.readAsDataURL(file);
-            });
+            for (let file of files) {
+                const imageId = 'gallery_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                
+                // Compress image
+                const compressedData = await compressImage(file, 1200, 900, 0.8);
+                await saveImage(imageId, compressedData);
+                
+                data.images.push({
+                    id: Date.now() + Math.random(),
+                    imageId: imageId,
+                    url: compressedData, // For immediate display
+                    caption: caption || file.name,
+                    date: new Date().toISOString()
+                });
+            }
+            
+            localStorage.setItem('images', JSON.stringify(data.images));
+            closeModal('imageModal');
+            e.target.reset();
+            document.getElementById('imagePreviewContainer').innerHTML = '';
+            showToast(`تم إضافة ${files.length} صورة بنجاح!`);
+            loadGallery();
         });
 
-        function deleteImage(index) {
+        async function deleteGalleryImage(index) {
             if(confirm('هل أنت متأكد من حذف هذه الصورة؟')) {
+                const img = data.images[index];
+                if (img.imageId) {
+                    await deleteImageFromStorage(img.imageId);
+                }
                 data.images.splice(index, 1);
                 localStorage.setItem('images', JSON.stringify(data.images));
                 loadGallery();
@@ -674,7 +924,10 @@
             }
         }
 
-        // Messages
+        // ==========================================
+        // MESSAGES
+        // ==========================================
+
         function loadMessages() {
             const container = document.getElementById('messagesList');
             if(data.messages.length === 0) {
@@ -724,14 +977,19 @@
             document.getElementById('msgCount').textContent = unread;
         }
 
-        // Utilities
+        // ==========================================
+        // UTILITIES
+        // ==========================================
+
         function openModal(id) { 
             document.getElementById(id).classList.add('active'); 
             if(id === 'postModal') {
                 tempPostImages = [];
+                tempImageIds = [];
                 document.getElementById('postImagesPreview').innerHTML = '';
             }
         }
+        
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
         
         function showToast(message) {
@@ -771,7 +1029,9 @@
             return cats[cat] || 'خبر';
         }
 
-        window.onclick = function(event) { if(event.target.classList.contains('modal')) event.target.classList.remove('active'); }
+        window.onclick = function(event) { 
+            if(event.target.classList.contains('modal')) event.target.classList.remove('active'); 
+        }
     </script>
 </body>
 </html>
